@@ -2,5 +2,6 @@ module.exports = {
   transpileDependencies: [
     'vuetify'
   ],
-  publicPath: '/uragen-two/'
+  publicPath: '/uragen-two/',
+  outputDir: "docs"
 }
