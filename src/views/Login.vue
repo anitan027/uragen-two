@@ -9,12 +9,22 @@
           <v-card-title class="mb-3">Sign In Form</v-card-title>
           <v-card-subtitle>Start creating the best possible user experience for you customers.</v-card-subtitle>
           <v-card-text class="mt-4">
+            <v-alert
+              :value="error"
+              dense
+              type="error"
+              transition="scale-transition"
+              class="mb-8"
+            >
+              {{ error }}
+            </v-alert>
             <v-form
               ref="form"
               v-model="valid"
               @submit.prevent="handleSubmit"
             >
               <v-text-field
+                ref="email"
                 v-model="email"
                 :rules="emailRules"
                 label="E-mail"
@@ -35,13 +45,13 @@
                 <a href="#" class="text-decoration-none subtitle-1">Forgot Password?</a>
               </div>
               <v-btn
-                :disabled="!valid"
-                class="mt-7"
+                :disabled="!isErrors ? isLoading : !valid"
+                class="mt-7 py-5"
                 block
                 color="primary"
                 elevation="2"
                 type="submit"
-                :loading="loading"
+                :loading="isLoading"
               >
               Sign In
               </v-btn>
@@ -54,6 +64,8 @@
 </template>
 
 <script>
+import { mapState, mapActions } from "vuex"
+import { isErrorEmpty } from '@/helpers/form'
 
 export default {
   name: 'Home',
@@ -68,22 +80,46 @@ export default {
     showPassword: false,
     passwordRules: [
       v => !!v || 'Please enter your password.'
-    ],
-    loading: false
+    ]
   }),
+  mounted() {
+    this.$store.commit("login/setErrors", {})
+    this.$refs.email.focus()
+  },
+  computed: {
+    ...mapState("login", ["error", "errors", "isLoading"]),
+    isErrors() {
+      return isErrorEmpty(this.errors)
+    }
+  },
   methods: {
-    handleSubmit () {
+    ...mapActions("login", ["sendLoginRequest"]),
+    async handleSubmit () {
       if (this.$refs.form.validate()) {
-        this.loading = true
+        this.$store.commit("login/setError", null)
+
         this.valid = false
-        console.log(this.email, this.password)
-        setTimeout(() => {
-          this.loading = false
-          // this.valid = true
-          this.emailRules.push('The email and password you entered don\'t match')
-          this.passwordRules.push('Wrong password')
+
+        await this.sendLoginRequest({ email: this.email, password: this.password })
+
+        if (this.isErrors && !this.error) {
+          this.$router.push({ name: "Dashboard" })
+        } else {
+          if (this.errors.email) {
+            this.emailRules.push(this.errors.email)
+          }
+
+          if (this.errors.password) {
+            this.passwordRules.push(this.errors.password)
+          }
+
           this.$refs.form.validate()
-        }, 3000)
+
+          this.emailRules.splice(-1)
+          this.passwordRules.splice(-1)
+
+          this.valid = true
+        }
       }
     }
   }
